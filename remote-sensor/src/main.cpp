@@ -12,7 +12,7 @@ void sendLapPacket();
 // TF Luna
 #define TF_SDA_RX 6 // SDA/RXD
 #define TF_SCL_TX 7 // SCL/TXD
-// #define TF_CFG 3
+// #define TF_CFG 3 <- Strapping Pin
 // #define TF_MODE 2 <- GPIO Pin 2 Conflicts with GC1109 FEM
 
 // Buttons (input)
