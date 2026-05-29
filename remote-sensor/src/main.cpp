@@ -17,7 +17,7 @@ void sendLapPacket();
 
 // Buttons (input)
 #define RESET_BTN 42
-#define COUNT_UP_BTN 41 // <-- use this for triggering laps for now
+#define COUNT_UP_BTN 0 // <-- use this for triggering laps for now PRG BUTTON
 
 // Gym Timer Display outputs
 #define RESET_SIG 4
