@@ -181,13 +181,7 @@ void loop()
   }
 
   // now for laps triggered by tf-luna
-  bool tfOk = tfmP.getData(dist, flux, temp);
-  static unsigned long lastTfPrint = 0;
-  if (millis() - lastTfPrint > 200)
-  {
-    lastTfPrint = millis();
-    Serial.printf("ok=%d armed=%d dist=%d flux=%d\n", tfOk, armed, dist, flux);
-  }
+  tfmP.getData(dist, flux, temp);
   // check if armed and dist > 0 as 0 is default when too far away
   if (armed && dist > 0 && dist <= LAP_TRIGGER_CM)
   {
