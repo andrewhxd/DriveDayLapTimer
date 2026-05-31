@@ -20,7 +20,7 @@ void loop() {
   digitalWrite(COUNT_UP, LOW);
   Serial.println("Starting");
 
-  delay(1000);
+  delay(2000);
 
   // stop timer after delay
   digitalWrite(COUNT_UP, HIGH);
@@ -28,7 +28,7 @@ void loop() {
   digitalWrite(COUNT_UP, LOW);
   Serial.println("Stopped");
 
-  delay(1000);
+  delay(2000);
 
   // reset timer
   digitalWrite(RESET, HIGH);
@@ -36,5 +36,5 @@ void loop() {
   digitalWrite(RESET, LOW);
   Serial.println("Reset");
   
-  delay(1000);
+  delay(2000);
 }

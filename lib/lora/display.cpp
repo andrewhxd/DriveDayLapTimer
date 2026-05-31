@@ -11,4 +11,3 @@ void display_init(U8G2& display) {
     display.setFont(u8g2_font_ncenB10_tr);
 }
 
-void display_logo

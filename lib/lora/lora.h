@@ -17,10 +17,11 @@
 // lora radio settings
 #define LORA_FREQ 915.0
 #define LORA_BW 125.0
-#define LORA_SF 9
+#define LORA_SF 7
 
 // main program initializes the radio still
-void lora_init(SX1262& radio, SPIClass& spi);
+// ADD lora radio settings to init
+void lora_init(SX1262& radio, SPIClass& spi); 
 
 // sends last 3 bytes id
 void lora_send_id(SX1262& radio, uint32_t id);

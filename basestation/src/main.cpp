@@ -4,8 +4,6 @@
 #include <esp_mac.h>
 #include <map>
 #include "lora.h"
-#include "display.h"
-
 
 // Initialize SX1262 radio
 // Make a custom SPI device because *of course* Heltec didn't use the default SPI pins
@@ -13,7 +11,6 @@ SPIClass spi(FSPI);
 SPISettings spiSettings(2000000, MSBFIRST, SPI_MODE0); // Defaults, works fine
 SX1262 radio = new Module(LORA_NSS_PIN, LORA_DIO1_PIN, LORA_RST_PIN, LORA_BUSY_PIN, spi, spiSettings);
 
-U8G2_SSD1306_128X64_NONAME_F_SW_I2C display(U8G2_R0, /* clock=*/OLED_SCL, /* data=*/OLED_SDA, /* reset=*/OLED_RESET); // All Boards without Reset of the Display
 
 /*~~~~~Global Variables~~~~~*/
 volatile bool receivedFlag = false;
@@ -42,19 +39,6 @@ void IRAM_ATTR receiveISR(void)
 
 /*~~~~~Helper Functions~~~~~*/
 
-void logo()
-{
-  display.clearBuffer();
-
-  snprintf(display_str, sizeof(display_str), "Initializing");
-  display.drawStr(20, 20, display_str);
-
-  snprintf(display_str, sizeof(display_str), "Basestation");
-  display.drawStr(20, 50, display_str);
-
-  display.sendBuffer();
-}
-
 void setup()
 {
   Serial.begin(115200);
@@ -74,14 +58,6 @@ void setup()
     error_message("Starting reception failed", state);
   }
   Serial.println("Complete!");
-
-  /* Initialize Display */
-  display_init(display)
-
-  // draw startup logo
-  logo();
-  delay(3000);
-  display.clear();
 }
 
 void loop()
@@ -89,7 +65,7 @@ void loop()
   if (recievedFlag) {
     recievedFlag = false;
     uint32_t id;
-    
+
     // read radio data 
     if (lora_read_id(radio,id)) {
       // get current time to compare

@@ -97,4 +97,5 @@ bool lora_read_id(SX1262& radio, uint32_t& id) {
         Serial.print("failed, code ");
         Serial.println(state);
     }
+    return false;
 }
