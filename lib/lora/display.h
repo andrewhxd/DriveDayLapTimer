@@ -10,7 +10,13 @@
 void display_init(U8G2& display);
 
 // print two lines of text for start up
-void display_logo(U8G2& display, char* str1, char* str2);
+void display_logo(U8G2& display, char* deviceType);
 
 // print two lines with info value
-void display_info(U8G2& display, char* str1, char* val1, char* str2, char* val2);
+void display_info(U8G2& display, uint32_t last_lap_ms, uint32_t lap_count);
+
+// print just lap count
+void display_lap_count(U8G2& display, uint32_t lap_count);
+
+// waiting for lap
+void display_waiting(U8G2& display);
