@@ -23,8 +23,13 @@
 // ADD lora radio settings to init
 void lora_init(SX1262& radio, SPIClass& spi); 
 
-// sends last 3 bytes id
+// sends last 3 bytes id (non-blocking: kicks off the transmit and returns;
+// call lora_service() every loop to complete it)
 void lora_send_id(SX1262& radio, uint32_t id);
+
+// finishes an in-flight non-blocking transmit once the radio signals done.
+// safe to call every loop iteration; no-op when nothing is transmitting.
+void lora_service(SX1262& radio);
 
 // modify id to hold data from packet if function returns true
 bool lora_read_id(SX1262& radio, uint32_t& id);

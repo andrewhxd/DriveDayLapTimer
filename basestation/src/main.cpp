@@ -5,13 +5,12 @@
 #include <map>
 #include "lora.h"
 #include "display.h"
+#include "gymtimer.h"
 
 // Gym Timer Display outputs
 #define RESET_SIG 4
 #define COUNT_SIG 5
 
-#define PULSE_MS 30       // gym timer pulse width
-#define INTER_PULSE_MS 30 // gap between consecutive pulses so the timer registers both
 static bool timer_running = false;
 static bool first_segment = true;
 
@@ -52,28 +51,19 @@ void IRAM_ATTR receiveISR(void)
 }
 
 /*~~~~~Helper Functions~~~~~*/
-// Pulse a display signal pin.
-static void pulse(uint8_t pin)
-{
-  digitalWrite(pin, HIGH);
-  delay(PULSE_MS);
-  digitalWrite(pin, LOW);
-}
-
 static void triggerLap()
 {
   if (!timer_running)
   {
     // first time across the line: just start the timer
-    pulse(COUNT_SIG);
+    gymtimer_pulse(COUNT_SIG);
     timer_running = true;
   }
   else
   {
     // Only reset -> restart, the first segment will stop
-    pulse(RESET_SIG); // reset
-    delay(INTER_PULSE_MS);
-    pulse(COUNT_SIG); // start counting the next lap
+    uint8_t seq[] = {RESET_SIG, COUNT_SIG};
+    gymtimer_sequence(seq, 2);
   }
 }
 
@@ -82,8 +72,7 @@ void setup()
   Serial.begin(115200);
   delay(2000);
 
-  pinMode(RESET_SIG, OUTPUT);
-  pinMode(COUNT_SIG, OUTPUT);
+  gymtimer_init(COUNT_SIG, RESET_SIG);
 
   /* Initialize Lora */
   lora_init(radio, spi);
@@ -110,6 +99,8 @@ void setup()
 
 void loop()
 {
+  gymtimer_update(); // advance current display pulse state 
+
   if (receivedFlag) {
     receivedFlag = false;
     uint32_t id;
@@ -142,13 +133,13 @@ void loop()
 
         lap_count++;
 
-        Serial.printf("LAP %lu: %lu ms\n", lap_count, elapsed);
+        Serial.printf("LAP %lu: %.3f s\n", lap_count, elapsed / 1000.0);
         display_info(display, last_lap_ms, lap_count);
 
         // dump segment times
         for (auto& segment : segment_times) {
           uint32_t split = segment.second - lap_start_ms;
-          Serial.printf("\t  segment %06X: %lu ms\n", segment.first, split);
+          Serial.printf("\t  segment %06X: %.3f s\n", segment.first, split / 1000.0);
         }
         segment_times.clear();
         lap_start_ms = now;
@@ -161,12 +152,12 @@ void loop()
         uint32_t split = now - lap_start_ms;
         segment_times[id] = now;
 
-        Serial.printf("Segment %06X @ %lu ms\n", id, split);
+        Serial.printf("Segment %06X @ %.3f s\n", id, split / 1000.0);
         
         // first segment
         if (first_segment) {
           first_segment = false;
-          pulse(COUNT_SIG);
+          gymtimer_pulse(COUNT_SIG);
         }
       }
     }

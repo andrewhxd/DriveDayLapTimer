@@ -8,6 +8,15 @@ static void error_message(const char *message, int16_t state)
         ; // loop forever
 }
 
+// non-blocking transmit state
+static volatile bool tx_done = false; // set from DIO1 ISR when packet is out
+static bool tx_active = false;        // a startTransmit() is in flight
+
+static void IRAM_ATTR lora_tx_isr(void)
+{
+    tx_done = true;
+}
+
 void lora_init(SX1262& radio, SPIClass& spi) {
     // turn on v4 power amp
     pinMode(FEM_EN, OUTPUT);
@@ -47,6 +56,9 @@ void lora_init(SX1262& radio, SPIClass& spi) {
         error_message("CRC initialization failed", state);
     }
 
+    // fire lora_tx_isr() on DIO1 when a transmission completes
+    radio.setPacketSentAction(lora_tx_isr);
+
     Serial.println("Radio Initalized");
 }
 
@@ -57,13 +69,29 @@ void lora_send_id(SX1262& radio, uint32_t id) {
     data[1] = (id >> 8) & 0xFF;
     data[2] = id & 0xFF;
 
-    int16_t state = radio.transmit(data, 3);
+    // if a previous send never got serviced, close it out first so the
+    // radio isn't left mid-transmit
+    if (tx_active) {
+        radio.finishTransmit();
+        tx_active = false;
+    }
+
+    tx_done = false;
+    int16_t state = radio.startTransmit(data, 3);
 
     if (state == RADIOLIB_ERR_NONE) {
-        Serial.println("Packet sent!");
+        tx_active = true; // completion handled in lora_service()
     }
     else {
-        Serial.printf("Transmit failed, code %d\n", state);
+        Serial.printf("Transmit start failed, code %d\n", state);
+    }
+}
+
+void lora_service(SX1262& radio) {
+    if (tx_active && tx_done) {
+        tx_active = false;
+        radio.finishTransmit(); // clears IRQ flags, returns radio to standby
+        Serial.println("Packet sent!");
     }
 }
 

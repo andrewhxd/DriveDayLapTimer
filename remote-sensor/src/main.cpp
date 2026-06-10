@@ -5,6 +5,7 @@
 #include <TFMPlus.h>
 #include "lora.h"
 #include "display.h"
+#include "gymtimer.h"
 
 /*~~~~~Pin Mapping~~~~~*/
 
@@ -14,7 +15,7 @@
 
 // Buttons (input)
 #define RESET_BTN 42
-#define COUNT_UP_BTN 0 // PRG button, manual lap trigger
+#define COUNT_UP_BTN 41
 
 // Gym Timer Display outputs
 #define RESET_SIG 4
@@ -25,10 +26,8 @@
 TFMPlus tfmP;
 HardwareSerial TFSerial(1);
 
-#define LAP_TRIGGER_CM 300
+#define LAP_TRIGGER_CM 20
 #define LAP_REARM_MS 1000  // shared debounce for both trigger paths
-#define PULSE_MS 30        // gym timer pulse width
-#define INTER_PULSE_MS 30  // gap between consecutive pulses so the timer registers both
 
 static bool armed = true;
 static unsigned long lastTriggerMs = 0;
@@ -67,14 +66,6 @@ void IRAM_ATTR resetISR(void) {
 
 /*~~~~~Helpers~~~~~*/
 
-// Pulse a display signal pin.
-static void pulse(uint8_t pin)
-{
-  digitalWrite(pin, HIGH);
-  delay(PULSE_MS);
-  digitalWrite(pin, LOW);
-}
-
 static void triggerLap(const char* source)
 {
   armed = false;
@@ -84,17 +75,14 @@ static void triggerLap(const char* source)
   if (!timer_running)
   {
     // first time across the line: just start the timer
-    pulse(COUNT_SIG);
+    gymtimer_pulse(COUNT_SIG);
     timer_running = true;
   }
   else
   {
-    // stop -> reset -> restart, 
-    pulse(COUNT_SIG);            // stop
-    delay(INTER_PULSE_MS);
-    pulse(RESET_SIG);            // reset
-    delay(INTER_PULSE_MS);
-    pulse(COUNT_SIG);            // start counting the next lap
+    // stop -> reset -> restart (plays out non-blocking via gymtimer_update)
+    uint8_t seq[] = {COUNT_SIG, RESET_SIG, COUNT_SIG};
+    gymtimer_sequence(seq, 3);
   }
 
   lora_send_id(radio, deviceId);
@@ -115,8 +103,7 @@ void setup()
   pinMode(RESET_BTN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(RESET_BTN), resetISR, FALLING);
 
-  pinMode(RESET_SIG, OUTPUT);
-  pinMode(COUNT_SIG, OUTPUT);
+  gymtimer_init(COUNT_SIG, RESET_SIG);
 
   // Get Device ID 
   uint8_t mac[6];
@@ -147,12 +134,14 @@ void setup()
 
 void loop()
 {
+  gymtimer_update(); // advance current display pulse
+
   if (resetFlag)
   {
     resetFlag = false;
     // full reset from the front-panel button: clear display and forget
     // that the timer was running so the next pass acts as "first lap"
-    pulse(RESET_SIG);
+    gymtimer_pulse(RESET_SIG);
     timer_running = false;
   }
 
@@ -170,10 +159,17 @@ void loop()
     if (armed) triggerLap("button");
   }
 
+  // finish any in-flight LoRa transmit 
+  lora_service(radio);
+
   // TF-Luna trigger (car passing)
-  tfmP.getData(dist, flux, temp);
-  if (armed && dist > 0 && dist <= LAP_TRIGGER_CM)
+  // only read when a full frame is already buffered
+  if (TFSerial.available() >= TFMP_FRAME_SIZE * 2)
   {
-    triggerLap("tf-luna");
+    tfmP.getData(dist, flux, temp);
+    if (armed && dist > 0 && dist <= LAP_TRIGGER_CM)
+    {
+      triggerLap("tf-luna");
+    }
   }
 }
